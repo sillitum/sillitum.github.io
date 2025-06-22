@@ -176,39 +176,39 @@ const roomImages = [
   new Image(),
   new Image()
 ];
-roomImages[0].src = '../img/room/ванная.png';
-roomImages[1].src = '../img/room/комната Ирины (2).png';
-roomImages[2].src = '../img/room/комродителей.png';
-roomImages[3].src = '../img/room/коридор.png';
-roomImages[4].src = '../img/menu/меню.png';
-roomImages[5].src = '../img/room/гостинная.png';
-roomImages[6].src = '../img/room/кухня.png';
+roomImages[0].src = 'ванная.png';
+roomImages[1].src = 'комната Ирины (2).png';
+roomImages[2].src = 'комродителей.png';
+roomImages[3].src = 'коридор.png';
+roomImages[4].src = 'меню.png';
+roomImages[5].src = 'гостинная.png';
+roomImages[6].src = 'кухня.png';
 
 const playerSprites = [];
 for (let i = 1; i <= 13; i++) {
   const img = new Image();
-  img.src = `../img/sprites/walk/ходьба вправо${i}.png`;
+  img.src = `ходьба вправо${i}.png`;
   playerSprites.push(img);
 }
 
 const menuCharacterSprites = [];
 for (let i = 1; i <= 6; i++) {
   const sprite = new Image();
-  sprite.src = `../img/menu/меню моденька${i}.png`;
+  sprite.src = `меню моденька${i}.png`;
   menuCharacterSprites.push(sprite);
 }
 
 const bagImage = new Image();
-bagImage.src = '../img/сумка.png';
+bagImage.src = 'сумка.png';
 const openInventoryImage = new Image();
-openInventoryImage.src = '../img/инвентарь.png';
+openInventoryImage.src = 'инвентарь.png';
 const arrowImage = new Image();
-arrowImage.src = '../img/стрелка.png';
+arrowImage.src = 'стрелка.png';
 
 const passportImage = new Image();
-passportImage.src = '../img/паспорт (3).png';
+passportImage.src = 'паспорт (3).png';
 const medicalCardImage = new Image();
-medicalCardImage.src = '../img/медкарта (3).png';
+medicalCardImage.src = 'медкарта (3).png';
 
 // Инвентарь
 let inventory = [];
