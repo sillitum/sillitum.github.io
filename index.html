@@ -274,6 +274,7 @@ function drawMenu(currentTime) {
   } else {
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    console.log('Изображение меню не загружено');
   }
 
   ctx.font = `${scaledFontSize}px Arial`;
@@ -312,6 +313,8 @@ function drawMenu(currentTime) {
     const startX = canvas.width - scaledSpriteWidth - scale(300);
     const startY = canvas.height / 4;
     ctx.drawImage(menuCharacterSprites[currentMenuSpriteIndex], startX, startY, scaledSpriteWidth, scaledSpriteHeight);
+  } else {
+    console.log('Спрайт персонажа в меню не загружен, index:', currentMenuSpriteIndex);
   }
 
   if (isGameStarted) {
@@ -553,6 +556,7 @@ canvas.addEventListener('mousemove', (event) => {
           mouseY >= y && mouseY <= y + inventoryCellSize
         ) {
           hoveredItemIndex = index;
+          tooltipText = item === 'passport' ? 'Паспорт: Документ, удостоверяющий личность.' : 'Медкарта: Медицинская карта пациента.';
         }
       });
     } else {
