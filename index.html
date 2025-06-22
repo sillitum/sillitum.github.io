@@ -39,14 +39,14 @@ let player = {
 
 // === 🏠 Комнаты и переходы ===
 const doorArrows = [
-  { x: 0, y: 0, roomIndex: 0, direction: 'right', orientation: 'horizontal', spawnX: 0, spawnY: 0 },
+  { x: 0, y: 0, roomIndex: 0, direction: 'left', orientation: 'horizontal', spawnX: 0, spawnY: 0 },
   { x: 0, y: 0, roomIndex: 1, direction: 'left', orientation: 'vertical', spawnX: 0, spawnY: 0 },
   { x: 0, y: 0, roomIndex: 2, direction: 'left', orientation: 'vertical', spawnX: 0, spawnY: 0 }, // Комната родителей
   { x: 0, y: 0, roomIndex: 6, direction: 'left', orientation: 'horizontal', spawnX: scale(300), spawnY: scale(500) }, // Новая стрелка в коридоре на кухню
 ];
 
 const exitArrows = {
-  0: { x: 0, y: 0, width: 0, height: 0, direction: 'left', orientation: 'horizontal', nextRoom: 3, spawnX: 0, spawnY: 0 },
+  0: { x: 0, y: 0, width: 0, height: 0, direction: 'right', orientation: 'horizontal', nextRoom: 3, spawnX: 0, spawnY: 0 },
   1: { x: 0, y: 0, width: 0, height: 0, direction: 'left', orientation: 'horizontal', nextRoom: 3, spawnX: 0, spawnY: 0 },
   2: { x: canvas.width - scale(200), y: scale(300), width: scale(160), height: scale(160), direction: 'left', orientation: 'horizontal', nextRoom: 3, spawnX: 0, spawnY: 0 }, // Комната родителей
   3: { x: 0, y: 0, width: 0, height: 0, direction: 'left', orientation: 'horizontal', nextRoom: 2, spawnX: 0, spawnY: 0 },
