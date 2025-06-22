@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Game</title>
+  <style>
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+<canvas id="gameMenuCanvas"></canvas>
+<script>
+const canvas = document.getElementById('gameMenuCanvas');
+const ctx = canvas.getContext('2d');
+
+// Базовое разрешение для масштабирования (Full HD)
+const BASE_WIDTH = 1920;
+const BASE_HEIGHT = 1080;
+
+// Коэффициент масштабирования
+let scaleFactor = 1;
+
+// Персонаж
+let player = {
+  x: 0,
+  y: 0,
+  width: 0,
+  height: 0,
+  speed: 0,
+  currentSpriteIndex: 0,
+  animationSpeed: 80,
+  lastAnimationTime: 0,
+  isMoving: false,
+  direction: 1
+};
+
+// === 🏠 Комнаты и переходы ===
+const doorArrows = [
+  { x: 0, y: 0, roomIndex: 0, direction: 'right', orientation: 'horizontal', spawnX: 0, spawnY: 0 },
+  { x: 0, y: 0, roomIndex: 1, direction: 'left', orientation: 'vertical', spawnX: 0, spawnY: 0 },
+  { x: 0, y: 0, roomIndex: 2, direction: 'left', orientation: 'vertical', spawnX: 0, spawnY: 0 }, // Комната родителей
+  { x: 0, y: 0, roomIndex: 6, direction: 'left', orientation: 'horizontal', spawnX: scale(300), spawnY: scale(500) }, // Новая стрелка в коридоре на кухню
+];
+
+const exitArrows = {
+  0: { x: 0, y: 0, width: 0, height: 0, direction: 'right', orientation: 'horizontal', nextRoom: 3, spawnX: 0, spawnY: 0 },
+  1: { x: 0, y: 0, width: 0, height: 0, direction: 'left', orientation: 'horizontal', nextRoom: 3, spawnX: 0, spawnY: 0 },
+  2: { x: canvas.width - scale(200), y: scale(300), width: scale(160), height: scale(160), direction: 'left', orientation: 'horizontal', nextRoom: 3, spawnX: 0, spawnY: 0 }, // Комната родителей
+  3: { x: 0, y: 0, width: 0, height: 0, direction: 'left', orientation: 'horizontal', nextRoom: 2, spawnX: 0, spawnY: 0 },
+  5: { x: scale(20), y: canvas.height / 2 - scale(50), width: scale(160), height: scale(160), direction: 'left', orientation: 'horizontal', nextRoom: 6, spawnX: scale(300), spawnY: scale(500) }, // Гостиная → кухня
+  6: { x: scale(20), y: canvas.height / 2 - scale(50), width: scale(160), height: scale(160), direction: 'left', orientation: 'horizontal', nextRoom: 3, spawnX: canvas.width - scale(300), spawnY: scale(500) }, // Кухня → коридор
+  7: { x: canvas.width - scale(100), y: canvas.height / 2 - scale(50), width: scale(160), height: scale(160), direction: 'right', orientation: 'horizontal', nextRoom: 5, spawnX: scale(300), spawnY: scale(500) } // Кухня → гостиная
+};
+
+// Функция для масштабирования значений
+function scale(value) {
+  return value * scaleFactor;
+}
+
+// Масштабированные размеры и позиции
+let scaledFontSize, scaledSpriteWidth, scaledSpriteHeight, scaledPlayerWidth, scaledPlayerHeight;
+let scaledBagWidth, scaledBagHeight, scaledBagX, scaledBagY;
+let scaledArrowWidth, scaledArrowHeight;
+
+// Функция для обновления размеров канваса и коэффициента масштабирования
+function updateCanvasSize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  scaleFactor = Math.min(canvas.width / BASE_WIDTH, canvas.height / BASE_HEIGHT);
+  updateScaledValues();
+}
+
+// Функция для обновления масштабированных значений
+function updateScaledValues() {
+  scaledFontSize = scale(36);
+  scaledSpriteWidth = scale(900);
+  scaledSpriteHeight = scale(800);
+  scaledPlayerWidth = scale(400);
+  scaledPlayerHeight = scale(500);
+  scaledBagWidth = scale(250);
+  scaledBagHeight = scale(250);
+  scaledBagX = scale(50);
+  scaledBagY = canvas.height - scaledBagHeight - scale(50);
+  scaledArrowWidth = scale(160);
+  scaledArrowHeight = scale(160);
+
+  player.width = scaledPlayerWidth;
+  player.height = scaledPlayerHeight;
+  player.speed = scale(3);
+  player.y = canvas.height - scaledPlayerHeight - scale(50);
+  player.x = canvas.width / 2;
+
+  doorArrows[0].x = scale(240);
+  doorArrows[0].y = scale(460);
+  doorArrows[0].spawnX = canvas.width - scaledPlayerWidth - scale(50);
+  doorArrows[0].spawnY = scale(500);
+
+  doorArrows[1].x = scale(730);
+  doorArrows[1].y = scale(460);
+  doorArrows[1].spawnX = canvas.width - scale(600);
+  doorArrows[1].spawnY = scale(500);
+
+  doorArrows[2].x = scale(1560);
+  doorArrows[2].y = scale(460);
+  doorArrows[2].spawnX = canvas.width - scale(600);
+  doorArrows[2].spawnY = scale(500);
+
+  doorArrows[3].x = canvas.width - scale(200);
+  doorArrows[3].y = canvas.height / 2 - scale(50);
+  doorArrows[3].spawnX = scale(300);
+  doorArrows[3].spawnY = scale(500);
+
+  exitArrows[0].x = canvas.width - scale(200);
+  exitArrows[0].y = canvas.height / 2 - scale(50);
+  exitArrows[0].width = scale(160);
+  exitArrows[0].height = scale(160);
+  exitArrows[0].spawnX = scale(300);
+  exitArrows[0].spawnY = scale(500);
+
+  exitArrows[1].x = canvas.width - scale(200);
+  exitArrows[1].y = canvas.height - scale(200);
+  exitArrows[1].width = scale(160);
+  exitArrows[1].height = scale(160);
+  exitArrows[1].spawnX = scale(800);
+  exitArrows[1].spawnY = scale(500);
+
+  exitArrows[2].x = canvas.width - scale(200);
+  exitArrows[2].y = scale(300);
+  exitArrows[2].width = scale(160);
+  exitArrows[2].height = scale(160);
+  exitArrows[2].spawnX = scale(1600);
+  exitArrows[2].spawnY = scale(500);
+
+  exitArrows[3].x = canvas.width - scale(200);
+  exitArrows[3].y = canvas.height / 2 - scale(50);
+  exitArrows[3].width = scale(160);
+  exitArrows[3].height = scale(160);
+  exitArrows[3].spawnX = scale(300);
+  exitArrows[3].spawnY = scale(500);
+
+  exitArrows[5].x = scale(20);
+  exitArrows[5].y = canvas.height / 2 - scale(50);
+  exitArrows[5].width = scale(160);
+  exitArrows[5].height = scale(160);
+  exitArrows[5].spawnX = scale(300);
+  exitArrows[5].spawnY = scale(500);
+
+  exitArrows[6].x = scale(20);
+  exitArrows[6].y = canvas.height / 2 - scale(50);
+  exitArrows[6].width = scale(160);
+  exitArrows[6].height = scale(160);
+  exitArrows[6].spawnX = canvas.width - scale(300);
+  exitArrows[6].spawnY = scale(500);
+
+  exitArrows[7].x = canvas.width - scale(100);
+  exitArrows[7].y = canvas.height / 2 - scale(50);
+  exitArrows[7].width = scale(160);
+  exitArrows[7].height = scale(160);
+  exitArrows[7].spawnX = scale(300);
+  exitArrows[7].spawnY = scale(500);
+}
+
+// Инициализация размеров канваса
+updateCanvasSize();
+
+// === 🖼️ Загрузка изображений ===
+const roomImages = [
+  new Image(),
+  new Image(),
+  new Image(),
+  new Image(),
+  new Image(),
+  new Image(),
+  new Image()
+];
+roomImages[0].src = '../img/room/ванная.png';
+roomImages[1].src = '../img/room/комната Ирины (2).png';
+roomImages[2].src = '../img/room/комродителей.png';
+roomImages[3].src = '../img/room/коридор.png';
+roomImages[4].src = '../img/menu/меню.png';
+roomImages[5].src = '../img/room/гостинная.png';
+roomImages[6].src = '../img/room/кухня.png';
+
+const playerSprites = [];
+for (let i = 1; i <= 13; i++) {
+  const img = new Image();
+  img.src = `../img/sprites/walk/ходьба вправо${i}.png`;
+  playerSprites.push(img);
+}
+
+const menuCharacterSprites = [];
+for (let i = 1; i <= 6; i++) {
+  const sprite = new Image();
+  sprite.src = `../img/menu/меню моденька${i}.png`;
+  menuCharacterSprites.push(sprite);
+}
+
+const bagImage = new Image();
+bagImage.src = '../img/сумка.png';
+const openInventoryImage = new Image();
+openInventoryImage.src = '../img/инвентарь.png';
+const arrowImage = new Image();
+arrowImage.src = '../img/стрелка.png';
+
+const passportImage = new Image();
+passportImage.src = '../img/паспорт (3).png';
+const medicalCardImage = new Image();
+medicalCardImage.src = '../img/медкарта (3).png';
+
+// Инвентарь
+let inventory = [];
+const inventoryCellSize = scale(100);
+const inventoryStartX = canvas.width / 2 - (openInventoryImage.width * scaleFactor) / 2 + scale(20);
+const inventoryStartY = canvas.height / 2 - (openInventoryImage.height * scaleFactor) / 2 + scale(20);
+
+// Определяем область стола
+const deskX = scale(50);
+const deskY = scale(500);
+const deskWidth = scale(600);
+const deskHeight = scale(500);
+
+// === 🎮 Игровые переменные ===
+let currentRoom = 4;
+let isGameStarted = false;
+let gameStartedTime = 0;
+const transitionDuration = 1000;
+let isInventoryOpen = false;
+
+const textColor = '#e66fa7';
+const hoverColor = '#ffffff';
+const menuItems = ['Новая игра', 'Продолжить', 'Настройки', 'Главы'];
+const exitItem = 'Выход';
+let hoveredItem = null;
+
+let currentMenuSpriteIndex = 0;
+let isBlinking = false;
+let isForward = true;
+const menuAnimationInterval = 200;
+let isStartingGame = false;
+
+const keys = { a: false, d: false };
+
+// Переменные для окошка описания
+let hoveredItemIndex = -1;
+let tooltipText = "Это пример описания предмета. Здесь можно указать любые детали!";
+
+// === 🎨 Функции отрисовки ===
+
+function playBlinkAnimation() {
+  return new Promise((resolve) => {
+    isBlinking = true;
+    isForward = true;
+    currentMenuSpriteIndex = 0;
+    lastBlinkStartTime = performance.now();
+
+    function checkAnimation(currentTime) {
+      if (!isBlinking) {
+        resolve();
+        return;
+      }
+      requestAnimationFrame(checkAnimation);
+    }
+    requestAnimationFrame(checkAnimation);
+  });
+}
+
+function drawMenu(currentTime) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (roomImages[4].complete && roomImages[4].naturalWidth > 0) {
+    ctx.drawImage(roomImages[4], 0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  ctx.font = `${scaledFontSize}px Arial`;
+  ctx.textAlign = 'center';
+  menuItems.forEach((item, index) => {
+    const x = canvas.width / 4 - scale(50);
+    const y = (canvas.height / 2 - (menuItems.length * scaledFontSize) / 2 + 150 * scaleFactor) + index * (scaledFontSize + scale(20));
+    ctx.fillStyle = hoveredItem === item ? hoverColor : textColor;
+    ctx.fillText(item, x, y);
+  });
+
+  const exitX = canvas.width / 4 + scale(50);
+  const exitY = canvas.height - scale(120);
+  ctx.fillStyle = hoveredItem === exitItem ? hoverColor : textColor;
+  ctx.fillText(exitItem, exitX, exitY);
+
+  if (isBlinking) {
+    const elapsed = currentTime - lastBlinkStartTime;
+    const frame = Math.floor(elapsed / menuAnimationInterval);
+
+    if (isForward) {
+      currentMenuSpriteIndex = Math.min(frame, menuCharacterSprites.length - 1);
+      if (currentMenuSpriteIndex >= menuCharacterSprites.length - 1) {
+        isForward = false;
+      }
+    } else {
+      const backwardFrame = frame - (menuCharacterSprites.length - 1);
+      currentMenuSpriteIndex = Math.max(menuCharacterSprites.length - 1 - backwardFrame, 0);
+      if (currentMenuSpriteIndex <= 0) {
+        isBlinking = false;
+      }
+    }
+  }
+
+  if (menuCharacterSprites[currentMenuSpriteIndex].complete && menuCharacterSprites[currentMenuSpriteIndex].naturalWidth > 0) {
+    const startX = canvas.width - scaledSpriteWidth - scale(300);
+    const startY = canvas.height / 4;
+    ctx.drawImage(menuCharacterSprites[currentMenuSpriteIndex], startX, startY, scaledSpriteWidth, scaledSpriteHeight);
+  }
+
+  if (isGameStarted) {
+    const elapsed = performance.now() - gameStartedTime;
+    if (elapsed >= transitionDuration) {
+      drawGame();
+    }
+  } else {
+    requestAnimationFrame(drawMenu);
+  }
+}
+
+function drawTooltip(x, y) {
+  if (hoveredItemIndex !== -1) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    ctx.fillRect(x, y - scale(40), ctx.measureText(tooltipText).width + scale(20), scale(50));
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `${scale(20)}px Arial`;
+    ctx.fillText(tooltipText, x + scale(10), y - scale(15));
+  }
+}
+
+function drawInventory() {
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  if (openInventoryImage.complete && openInventoryImage.naturalWidth > 0) {
+    const inventoryX = canvas.width / 2 - (openInventoryImage.width * scaleFactor) / 2;
+    const inventoryY = canvas.height / 2 - (openInventoryImage.height * scaleFactor) / 2;
+    ctx.drawImage(openInventoryImage, inventoryX, inventoryY, openInventoryImage.width * scaleFactor, openInventoryImage.height * scaleFactor);
+  }
+
+  const offsetX = scale(1365);
+  const offsetY = scale(500);
+  inventory.forEach((item, index) => {
+    const row = Math.floor(index / 3);
+    const col = index % 3;
+    const x = inventoryStartX + col * inventoryCellSize + offsetX;
+    const y = inventoryStartY + row * inventoryCellSize + offsetY;
+    const scaledSize = inventoryCellSize * 1.1;
+    if (item === 'passport' && passportImage.complete) {
+      ctx.drawImage(passportImage, x, y, scaledSize, scaledSize);
+    } else if (item === 'medicalCard' && medicalCardImage.complete) {
+      ctx.drawImage(medicalCardImage, x, y, scaledSize, scaledSize);
+    }
+  });
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `${scaledFontSize}px Arial`;
+  const closeText = 'Закрыть';
+  const closeTextWidth = ctx.measureText(closeText).width;
+  const closeX = canvas.width - scale(150) - closeTextWidth / 2;
+  const closeY = canvas.height - scale(50);
+  ctx.fillText(closeText, closeX, closeY);
+
+  if (isInventoryOpen && hoveredItemIndex !== -1) {
+    const row = Math.floor(hoveredItemIndex / 3);
+    const col = hoveredItemIndex % 3;
+    const tooltipX = inventoryStartX + col * inventoryCellSize + inventoryCellSize + offsetX;
+    const tooltipY = inventoryStartY + row * inventoryCellSize + offsetY;
+    drawTooltip(tooltipX, tooltipY);
+  }
+}
+
+function drawGame() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  console.log("drawGame вызван, currentRoom:", currentRoom);
+  if (roomImages[currentRoom].complete && roomImages[currentRoom].naturalWidth > 0) {
+    ctx.drawImage(roomImages[currentRoom], 0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    console.log("Изображение комнаты не загружено:", currentRoom);
+  }
+
+  // Отрисовка стрелок для всех комнат
+  if (currentRoom === 3) {
+    doorArrows.forEach(arrow => {
+      console.log("Отрисовка doorArrow для комнаты", currentRoom, "координаты:", arrow.x, arrow.y);
+      ctx.save();
+      if (arrow.orientation === 'vertical') {
+        ctx.translate(arrow.x + scaledArrowWidth / 2, arrow.y + scaledArrowHeight / 2);
+        ctx.rotate(-Math.PI / 2);
+        if (arrow.direction === 'left') {
+          ctx.scale(-1, 1);
+          if (arrowImage.complete) ctx.drawImage(arrowImage, -scaledArrowWidth / 2, -scaledArrowHeight / 2, scaledArrowWidth, scaledArrowHeight);
+        } else {
+          if (arrowImage.complete) ctx.drawImage(arrowImage, -scaledArrowWidth / 2, -scaledArrowHeight / 2, scaledArrowWidth, scaledArrowHeight);
+        }
+      } else {
+        if (arrow.direction === 'left') {
+          ctx.translate(arrow.x + scaledArrowWidth, arrow.y);
+          ctx.scale(-1, 1);
+          if (arrowImage.complete) ctx.drawImage(arrowImage, 0, 0, scaledArrowWidth, scaledArrowHeight);
+        } else {
+          if (arrowImage.complete) ctx.drawImage(arrowImage, arrow.x, arrow.y, scaledArrowWidth, scaledArrowHeight);
+        }
+      }
+      ctx.restore();
+    });
+  } else {
+    // Отрисовка всех стрелок для текущей комнаты
+    const arrows = [];
+    if (currentRoom === 5) {
+      arrows.push(exitArrows[5]); // Только левая стрелка в гостиной
+    } else if (currentRoom === 6) {
+      arrows.push(exitArrows[6], exitArrows[7]); // Левая и правая стрелки на кухне
+    } else if (currentRoom === 2) {
+      arrows.push(exitArrows[2]); // Одна стрелка в комнате родителей
+    } else if (exitArrows[currentRoom]) {
+      arrows.push(exitArrows[currentRoom]);
+    }
+    
+    arrows.forEach(arrow => {
+      if (arrow) {
+        console.log("Отрисовка exitArrow для комнаты", currentRoom, "координаты:", arrow.x, arrow.y, "ширина:", arrow.width, "высота:", arrow.height, "изображение загружено:", arrowImage.complete);
+        if (arrowImage.complete) {
+          ctx.save();
+          // Поворот стрелки на 180 градусов для комнаты Ирины (1) и комнаты родителей (2)
+          if (currentRoom === 1 || currentRoom === 2 || (currentRoom === 6 && arrow === exitArrows[7])) {
+            ctx.translate(arrow.x + arrow.width / 2, arrow.y + arrow.height / 2);
+            ctx.rotate(Math.PI);
+            ctx.drawImage(arrowImage, -arrow.width / 2, -arrow.height / 2, arrow.width, arrow.height);
+          } else {
+            ctx.drawImage(arrowImage, arrow.x, arrow.y, arrow.width, arrow.height);
+          }
+          ctx.restore();
+        }
+      }
+    });
+  }
+
+  const now = performance.now();
+  if (player.isMoving && now - player.lastAnimationTime > player.animationSpeed) {
+    player.currentSpriteIndex = (player.currentSpriteIndex + 1) % playerSprites.length;
+    player.lastAnimationTime = now;
+  }
+
+  ctx.save();
+  if (player.direction === -1) {
+    ctx.translate(player.x + player.width, 0);
+    ctx.scale(-1, 1);
+    if (playerSprites[player.currentSpriteIndex].complete && playerSprites[player.currentSpriteIndex].naturalWidth > 0) {
+      ctx.drawImage(playerSprites[player.currentSpriteIndex], 0, player.y, player.width, player.height);
+    } else {
+      console.log("Спрайт персонажа не загружен:", player.currentSpriteIndex);
+    }
+  } else {
+    if (playerSprites[player.currentSpriteIndex].complete && playerSprites[player.currentSpriteIndex].naturalWidth > 0) {
+      ctx.drawImage(playerSprites[player.currentSpriteIndex], player.x, player.y, player.width, player.height);
+    } else {
+      console.log("Спрайт персонажа не загружен:", player.currentSpriteIndex);
+    }
+  }
+  ctx.restore();
+
+  ctx.fillStyle = textColor;
+  ctx.font = `${scaledFontSize}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.fillText('Вернуться в меню', canvas.width / 2, canvas.height - scaledFontSize);
+
+  if (bagImage.complete && bagImage.naturalWidth > 0) {
+    ctx.drawImage(bagImage, scaledBagX, scaledBagY, scaledBagWidth, scaledBagHeight);
+  }
+
+  if (isInventoryOpen) {
+    drawInventory();
+  }
+
+  updatePlayerPosition();
+  requestAnimationFrame(drawGame);
+}
+
+// === 🕹️ Игровая логика ===
+
+function updatePlayerPosition() {
+  player.isMoving = false;
+  if (keys.a) {
+    player.x -= player.speed;
+    player.direction = -1;
+    player.isMoving = true;
+  }
+  if (keys.d) {
+    player.x += player.speed;
+    player.direction = 1;
+    player.isMoving = true;
+  }
+  player.x = Math.max(0, Math.min(player.x, canvas.width - player.width));
+}
+
+// === 🛠️ Обработка событий ===
+
+window.addEventListener('keydown', (e) => {
+  if (isGameStarted) {
+    if (e.key.toLowerCase() === 'a') keys.a = true;
+    if (e.key.toLowerCase() === 'd') keys.d = true;
+  }
+});
+
+window.addEventListener('keyup', (e) => {
+  if (isGameStarted) {
+    if (e.key.toLowerCase() === 'a') keys.a = false;
+    if (e.key.toLowerCase() === 'd') keys.d = false;
+  }
+});
+
+canvas.addEventListener('mousemove', (event) => {
+  const mouseX = event.clientX;
+  const mouseY = event.clientY;
+
+  if (isGameStarted) {
+    const backText = 'Вернуться в меню';
+    const textX = canvas.width / 2;
+    const textY = canvas.height - scaledFontSize;
+    const textWidth = ctx.measureText(backText).width;
+    const textHeight = scaledFontSize;
+
+    if (
+      mouseX >= textX - textWidth / 2 &&
+      mouseX <= textX + textWidth / 2 &&
+      mouseY >= textY - textHeight &&
+      mouseY <= textY + textHeight / 2
+    ) {
+      hoveredItem = backText;
+    } else {
+      hoveredItem = null;
+    }
+
+    if (isInventoryOpen) {
+      hoveredItemIndex = -1;
+      inventory.forEach((item, index) => {
+        const row = Math.floor(index / 3);
+        const col = index % 3;
+        const x = inventoryStartX + col * inventoryCellSize + scale(1365);
+        const y = inventoryStartY + row * inventoryCellSize + scale(500);
+
+        if (
+          mouseX >= x && mouseX <= x + inventoryCellSize &&
+          mouseY >= y && mouseY <= y + inventoryCellSize
+        ) {
+          hoveredItemIndex = index;
+        }
+      });
+    } else {
+      hoveredItemIndex = -1;
+    }
+  } else {
+    hoveredItem = null;
+    menuItems.forEach((item, index) => {
+      const textX = canvas.width / 4 - scale(50);
+      const textY = (canvas.height / 2 - (menuItems.length * scaledFontSize) / 2 + scale(150)) + index * (scaledFontSize + scale(20));
+      const textWidth = ctx.measureText(item).width;
+      const textHeight = scaledFontSize;
+
+      if (
+        mouseX >= textX - textWidth / 2 &&
+        mouseX <= textX + textWidth / 2 &&
+        mouseY >= textY - textHeight &&
+        mouseY <= textY + textHeight / 2
+      ) {
+        hoveredItem = item;
+      }
+    });
+
+    const exitX = canvas.width / 4 + scale(50);
+    const exitY = canvas.height - scale(120);
+    const exitWidth = ctx.measureText(exitItem).width;
+    const exitHeight = scaledFontSize;
+
+    if (
+      mouseX >= exitX - exitWidth / 2 &&
+      mouseX <= exitX + exitWidth / 2 &&
+      mouseY >= exitY - exitHeight &&
+      mouseY <= exitY + textHeight / 2
+    ) {
+      hoveredItem = exitItem;
+    }
+    hoveredItemIndex = -1;
+  }
+});
+
+let lastBlinkStartTime = 0;
+
+canvas.addEventListener('click', async (event) => {
+  const x = event.clientX;
+  const y = event.clientY;
+
+  if (isGameStarted) {
+    if (isInventoryOpen) {
+      const closeText = 'Закрыть';
+      const closeTextWidth = ctx.measureText(closeText).width;
+      const closeX = canvas.width - scale(150) - closeTextWidth / 2;
+      const closeY = canvas.height - scale(50);
+      const closeHeight = scaledFontSize;
+
+      if (
+        x >= closeX &&
+        x <= closeX + closeTextWidth &&
+        y >= closeY - closeHeight / 2 &&
+        y <= closeY + closeHeight / 2
+      ) {
+        isInventoryOpen = false;
+      }
+    } else {
+      const backText = 'Вернуться в меню';
+      const textX = canvas.width / 2;
+      const textY = canvas.height - scaledFontSize;
+      const textWidth = ctx.measureText(backText).width;
+      const textHeight = scaledFontSize;
+
+      if (
+        x >= textX - textWidth / 2 &&
+        x <= textX + textWidth / 2 &&
+        y >= textY - textHeight &&
+        y <= textY + textHeight / 2
+      ) {
+        isGameStarted = false;
+        player.x = canvas.width / 2;
+        player.y = canvas.height - player.height - scale(50);
+        player.currentSpriteIndex = 0;
+        player.isMoving = false;
+        currentRoom = 4;
+        drawMenu();
+        return;
+      }
+
+      if (x >= scaledBagX && x <= scaledBagX + scaledBagWidth &&
+          y >= scaledBagY && y <= scaledBagY + scaledBagHeight) {
+        isInventoryOpen = true;
+      }
+
+      if (currentRoom === 3) {
+        doorArrows.forEach(arrow => {
+          if (x >= arrow.x && x <= arrow.x + scaledArrowWidth && y >= arrow.y && y <= arrow.y + scaledArrowHeight) {
+            currentRoom = arrow.roomIndex;
+            player.x = arrow.spawnX;
+            player.y = arrow.spawnY;
+            player.direction = arrow.direction === 'left' ? -1 : 1;
+          }
+        });
+      } else {
+        const arrows = [];
+        if (currentRoom === 5) {
+          arrows.push(exitArrows[5]);
+        } else if (currentRoom === 6) {
+          arrows.push(exitArrows[6], exitArrows[7]);
+        } else if (currentRoom === 2) {
+          arrows.push(exitArrows[2]);
+        } else if (exitArrows[currentRoom]) {
+          arrows.push(exitArrows[currentRoom]);
+        }
+        
+        arrows.forEach(arrow => {
+          if (arrow && x >= arrow.x && x <= arrow.x + arrow.width &&
+              y >= arrow.y && y <= arrow.y + arrow.height) {
+            console.log("Клик по стрелке подтверждён, переход в комнату:", arrow.nextRoom);
+            currentRoom = arrow.nextRoom;
+            player.x = arrow.spawnX;
+            player.y = arrow.spawnY;
+            player.direction = arrow.direction === 'left' ? -1 : 1;
+          }
+        });
+      }
+
+      // Подбор паспорта и медкарты только в комнате Ирины (roomIndex 1)
+      if (currentRoom === 1 &&
+          x >= deskX && x <= deskX + deskWidth &&
+          y >= deskY && y <= deskY + deskHeight &&
+          !inventory.includes('passport') && !inventory.includes('medicalCard')) {
+        inventory.push('passport');
+        inventory.push('medicalCard');
+        alert('Вы подобрали паспорт и медкарту!');
+      }
+    }
+  } else {
+    if (!isBlinking && !isStartingGame) {
+      await playBlinkAnimation();
+    }
+
+    if (hoveredItem === 'Новая игра' && !isStartingGame) {
+      isStartingGame = true;
+      await playBlinkAnimation();
+      isGameStarted = true;
+      gameStartedTime = performance.now();
+      currentRoom = 1;
+      player.x = canvas.width - scale(600);
+      player.y = scale(500);
+      player.direction = -1;
+      player.currentSpriteIndex = 0;
+      isStartingGame = false;
+      drawGame();
+    } else if (hoveredItem === 'Выход') {
+      if (confirm('Вы уверены, что хотите выйти?')) {
+        window.close();
+      }
+    } else if (hoveredItem) {
+      alert(`Вы выбрали: ${hoveredItem}`);
+    }
+  }
+});
+
+window.addEventListener('resize', () => {
+  updateCanvasSize();
+
+  if (isGameStarted) {
+    player.y = canvas.height - player.height - scale(20);
+    player.x = Math.min(player.x, canvas.width - player.width);
+    player.x = Math.max(0, player.x);
+  }
+});
+
+const imageLoadPromises = [
+  ...roomImages.map((img, index) => new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(`Ошибка загрузки ${index}: ${img.src}`); img.src = img.src; })),
+  ...playerSprites.map((sprite, index) => new Promise((res, rej) => { sprite.onload = res; sprite.onerror = () => rej(`Ошибка загрузки спрайта ${index}: ${sprite.src}`); sprite.src = sprite.src; })),
+  ...menuCharacterSprites.map((sprite, index) => new Promise((res, rej) => { sprite.onload = res; sprite.onerror = () => rej(`Ошибка загрузки меню ${index}: ${sprite.src}`); sprite.src = sprite.src; })),
+  new Promise((res, rej) => { bagImage.onload = res; bagImage.onerror = () => rej(`Ошибка загрузки сумки: ${bagImage.src}`); bagImage.src = bagImage.src; }),
+  new Promise((res, rej) => { openInventoryImage.onload = res; openInventoryImage.onerror = () => rej(`Ошибка загрузки инвентаря: ${openInventoryImage.src}`); openInventoryImage.src = openInventoryImage.src; }),
+  new Promise((res, rej) => { arrowImage.onload = res; arrowImage.onerror = () => rej(`Ошибка загрузки стрелки: ${arrowImage.src}`); arrowImage.src = arrowImage.src; }),
+  new Promise((res, rej) => { passportImage.onload = res; passportImage.onerror = () => rej(`Ошибка загрузки паспорта: ${passportImage.src}`); passportImage.src = passportImage.src; }),
+  new Promise((res, rej) => { medicalCardImage.onload = res; medicalCardImage.onerror = () => rej(`Ошибка загрузки медкарты: ${medicalCardImage.src}`); medicalCardImage.src = medicalCardImage.src; })
+];
+
+Promise.all(imageLoadPromises).then(() => {
+  console.log("Все изображения загружены, arrowImage:", arrowImage.complete);
+  requestAnimationFrame(drawMenu);
+}).catch((error) => {
+  console.error("Ошибка загрузки изображений:", error);
+});
+</script>
+</body>
+</html>
